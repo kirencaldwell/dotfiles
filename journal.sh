@@ -25,25 +25,26 @@ take_note () {
   # log note to file
   echo "$NOTE" >> ~/.my_journal.txt
   # repeat the note so the user knows what it wrote
-  echo "${CYAN}$NOTE${NC}"
+  echo "${NOTE_COLOR}$NOTE${NC}"
 }
 
 add_todo() {
-  N=$(grep -c "@todo" ~/.my_journal.txt);
-  N=$((N+1))  
-  take_note "$N@todo $*" 
+  # N=$(grep -c "@todo" ~/.my_journal.txt);
+  # N=$((N+1))  
+  N="#$(openssl rand -hex 3)"
+  take_note "${RED}$N@todo${NC} $*" 
 }
 
 list_todos() {
-  echo "${CYAN}Listing todos${NC}"
+  echo "${NOTE_COLOR}Listing todos${NC}"
   grep "@todo" ~/.my_journal.txt --color
 }
 delete_todo() {
-  echo "${CYAN}Marking todo ${RED}#${1} ${CYAN}as done${NC}"
+  echo "${NOTE_COLOR}Marking todo ${RED}#${1} ${NOTE_COLOR}as done${NC}"
   find ~/.my_journal.txt -type f -exec sed -i "s/${1}@todo/${1}@done/g" {} \;
 }
 list_done() {
-  echo "${CYAN}Listing finished items${NC}"
+  echo "${NOTE_COLOR}Listing finished items${NC}"
   grep "@done" ~/.my_journal.txt --color
 }
 
@@ -52,7 +53,7 @@ summarize() {
 }
   
 
-CYAN='\033[0;36m'
+NOTE_COLOR='\033[0;093m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 # main?
@@ -63,12 +64,12 @@ case ${OPT} in
   # run search
   -s | search) 
     SEARCH="${1}"
-    echo "${CYAN}Searching for ${RED}$SEARCH${NC}"
+    echo "${NOTE_COLOR}Searching for ${RED}$SEARCH${NC}"
     grep "$SEARCH" ~/.my_journal.txt --color
     ;;
   # show N recent entries
   -p | print)
-    echo "${CYAN}Showing last ${RED}${1}${CYAN} entries${NC}"
+    echo "${NOTE_COLOR}Showing last ${RED}${1}${NOTE_COLOR} entries${NC}"
     summarize "${1}"
     ;;
   -ta | -t | todo)

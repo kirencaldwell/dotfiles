@@ -1,0 +1,19 @@
+# Keep the bazel server alive for 24 hours.
+startup --max_idle_secs=86400
+ 
+# Always show color output, even without a TTY.
+common --color=yes
+ 
+# Purge external resources when cleaning.
+# Clean asynchronously with a daemon process.
+clean --expunge_async
+ 
+# Use the build farm when performing build actions.
+# Schedule 128 concurrent jobs to leverage kraken's resources.
+build --config=cuda --config=kraken --jobs=80
+ 
+# Perform up to 6 build actions locally before delegating to kraken.
+# build --local_execution_slots=6
+ 
+# Show stdout and stderr output from failing test targets.
+test --test_output=errors
