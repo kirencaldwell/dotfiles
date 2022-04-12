@@ -1,8 +1,12 @@
 #!/bin/bash
+DAILY_PATH="/home/kcaldwell/Documents/Zoox"
+# get current time and date
+NOW=$(date)
+TODAY=$(date +%F)
+DIR_NAME=$(basename "`pwd`")
 
 take_note () {
-  # get current time and date
-  NOW=$(date)
+  # get current date
   # note is whatever user input
   NOTE="$*"
   # get git repo name
@@ -21,37 +25,46 @@ take_note () {
   fi
  
   # add time info to note 
-  NOTE="${NOW}: ${NOTE}"
   # log note to file
-  echo "$NOTE" >> ~/.my_journal.txt
+  mkdir -p ${DAILY_PATH}/${DIR_NAME}
+  echo "$NOTE\n" >> ${DAILY_PATH}/${DIR_NAME}/notes.md
   # repeat the note so the user knows what it wrote
   echo "${NOTE_COLOR}$NOTE${NC}"
 }
 
 add_todo() {
-  # N=$(grep -c "@todo" ~/.my_journal.txt);
-  # N=$((N+1))  
-  N="#$(openssl rand -hex 3)"
-  take_note "${RED}$N@todo${NC} $*" 
+  N="@$(openssl rand -hex 3)"
+  take_note "- [ ] #todo ${N} ${NOW}: $*" 
 }
-
 list_todos() {
   echo "${NOTE_COLOR}Listing todos${NC}"
-  grep "@todo" ~/.my_journal.txt --color
+  grep -r -F "[ ] #todo" ${DAILY_PATH}/ --color
 }
 delete_todo() {
-  echo "${NOTE_COLOR}Marking todo ${RED}#${1} ${NOTE_COLOR}as done${NC}"
-  find ~/.my_journal.txt -type f -exec sed -i "s/${1}@todo/${1}@done/g" {} \;
+  echo "${NOTE_COLOR}Marking todo ${RED}@${1} ${NOTE_COLOR}as done${NC}"
+  grep -rlF "[ ] #todo @${1}" ${DAILY_PATH} | xargs sed -i -e "s/\[ \] #todo @${1}/\[x\] #todo @${1}/g"
 }
 list_done() {
   echo "${NOTE_COLOR}Listing finished items${NC}"
-  grep "@done" ~/.my_journal.txt --color
+  grep -rF "[x] #todo" ${DAILY_PATH} --color
 }
+reopen_todo() {
+  echo "${NOTE_COLOR}Reopening todo ${RED}#${1}${NC}"
+  grep -rlF "[x] #todo @${1}" ${DAILY_PATH} | xargs sed -i -e "s/\[x\] #todo @${1}/\[ \] #todo @${1}/g"
+} 
 
-summarize() {
-  tail -${1} ~/.my_journal.txt
+add_question() {
+  N="@$(openssl rand -hex 3)"
+  take_note "$N #question ${NOW}: $*" 
 }
-  
+list_questions() {
+  echo "${NOTE_COLOR}Listing questions${NC}"
+  grep -r "#question" ${DAILY_PATH} --color
+}
+list_code() {
+  echo "${NOTE_COLOR}Listing code snippets${NC}"
+  grep "#code" ~/.my_journal.txt --color
+}
 
 NOTE_COLOR='\033[0;093m'
 RED='\033[0;31m'
@@ -62,17 +75,25 @@ OPT="${1}"
 shift
 case ${OPT} in
   # run search
-  -s | search) 
+  -s | -search) 
     SEARCH="${1}"
     echo "${NOTE_COLOR}Searching for ${RED}$SEARCH${NC}"
     grep "$SEARCH" ~/.my_journal.txt --color
     ;;
   # show N recent entries
-  -p | print)
-    echo "${NOTE_COLOR}Showing last ${RED}${1}${NOTE_COLOR} entries${NC}"
-    summarize "${1}"
+  -tq | -q | -question)
+    add_question "$*"
     ;;
-  -ta | -t | todo)
+  -ql) 
+    list_questions "$*"
+    ;;
+  -qa)
+    answer_question "$*"
+    ;;
+  -al)
+    list_answers
+    ;;
+  -ta | -t | -todo)
     add_todo "$*"
     ;;
   -tl) 
@@ -84,8 +105,17 @@ case ${OPT} in
   -td)
     list_done
     ;;
+  -tr)
+    reopen_todo "$*" 
+    ;;
+  -c | -code)
+    take_note "#code $*"
+    ;;
+  -cl | -code_list)
+    list_code
+    ;;
   # default case is to take note
   *)
-    take_note "$OPT $*"
+    take_note "${NOW}: $OPT $*"
     ;;
 esac
