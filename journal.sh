@@ -10,6 +10,7 @@ readonly DAILY_PATH="/home/kcaldwell/Documents/Zoox"
 readonly NOTE_COLOR='\033[0;93m'
 readonly RED='\033[0;31m'
 readonly NC='\033[0m' # No Color
+readonly EDITOR="vim"
 
 # Global variables
 NOW=$(date)
@@ -19,11 +20,11 @@ readonly NOTES_FILE="${DAILY_PATH}/${DIR_NAME}/notes.md"
 
 # Utility functions
 log_info() {
-    echo -e "${NOTE_COLOR}$*${NC}"
+    echo "${NOTE_COLOR}$*${NC}"
 }
 
 log_error() {
-    echo -e "${RED}$*${NC}" >&2
+    echo "${RED}$*${NC}" >&2
 }
 
 ensure_notes_dir() {
@@ -66,7 +67,7 @@ take_note() {
     fi
 
     # Add note to file
-    echo -e "\n$note" >> "$NOTES_FILE"
+    echo "\n$note" >> "$NOTES_FILE"
 
     # Echo back to user
     log_info "$note"
@@ -220,6 +221,142 @@ search_notes() {
     fi
 }
 
+# Enhanced FZF search with preview across all notes
+fzf_search_notes() {
+    local search_results="/tmp/journal_search_$$"
+
+    # Find all notes files and their content with line numbers
+    find "$DAILY_PATH" -name "notes.md" -type f -exec grep -Hn "." {} \; 2>/dev/null > "$search_results"
+
+    if [ ! -s "$search_results" ]; then
+        log_info "No notes found"
+        rm -f "$search_results"
+        return 1
+    fi
+
+        # Use FZF with preview showing the context around the selected line
+    local selected
+    selected=$(cat "$search_results" | fzf \
+        --prompt="Search notes: " \
+        --height=80% \
+        --reverse \
+        --border \
+        --preview 'file=$(echo {} | cut -d: -f1); line=$(echo {} | cut -d: -f2); if [ -f "$file" ] && [ "$line" -gt 0 ] 2>/dev/null; then start=$((line > 5 ? line - 5 : 1)); sed -n "${start},$((line + 5))p" "$file" | nl -ba -v $start; else echo "Preview not available"; fi' \
+        --preview-window=right:50%)
+
+    if [ -n "$selected" ]; then
+        local selected_file=$(echo "$selected" | cut -d: -f1)
+        local selected_line=$(echo "$selected" | cut -d: -f2)
+        log_info "Opening: $selected_file at line $selected_line"
+        if [ -n "$EDITOR" ]; then
+            $EDITOR "+$selected_line" "$selected_file"
+        elif command -v vim >/dev/null 2>&1; then
+            vim "+$selected_line" "$selected_file"
+        elif command -v nano >/dev/null 2>&1; then
+            nano "+$selected_line" "$selected_file"
+        else
+            less "+$selected_line" "$selected_file"
+        fi
+    else
+        log_info "No search result selected"
+    fi
+
+    rm -f "$search_results"
+}
+
+# Browse all notes with FZF and preview
+fzf_browse_notes() {
+    local notes_list="/tmp/journal_browse_$$"
+
+    # Create list of all notes with their directory context
+    find "$DAILY_PATH" -name "notes.md" -type f | while read -r file; do
+        local dir_name=$(basename "$(dirname "$file")")
+        local line_count=$(wc -l < "$file" 2>/dev/null || echo "0")
+        echo "$file|$dir_name ($line_count lines)"
+    done > "$notes_list"
+
+    if [ ! -s "$notes_list" ]; then
+        log_info "No notes found"
+        rm -f "$notes_list"
+        return 1
+    fi
+
+        # Use FZF to browse notes with preview
+    local selected
+    selected=$(cat "$notes_list" | fzf \
+        --prompt="Browse notes: " \
+        --height=80% \
+        --reverse \
+        --border \
+        --delimiter="|" \
+        --with-nth=2 \
+        --preview 'file=$(echo {} | cut -d"|" -f1); if [ -f "$file" ]; then cat "$file"; else echo "File not found"; fi' \
+        --preview-window=right:60%)
+
+    if [ -n "$selected" ]; then
+        local selected_file=$(echo "$selected" | cut -d"|" -f1)
+        log_info "Opening: $selected_file"
+        if [ -n "$EDITOR" ]; then
+            $EDITOR "$selected_file"
+        elif command -v vim >/dev/null 2>&1; then
+            vim "$selected_file"
+        elif command -v nano >/dev/null 2>&1; then
+            nano "$selected_file"
+        else
+            less "$selected_file"
+        fi
+    else
+        log_info "No file selected"
+    fi
+
+    rm -f "$notes_list"
+}
+
+# Directory switching with FZF
+fzf_switch_directory() {
+    local dirs_list="/tmp/journal_dirs_$$"
+
+    # Find all directories that contain notes
+    find "$DAILY_PATH" -name "notes.md" -type f -exec dirname {} \; | while read -r dir; do
+        local dir_name=$(basename "$dir")
+        local note_file="$dir/notes.md"
+        local todo_count=$(grep -c "\\[ \\] #todo" "$note_file" 2>/dev/null || echo "0")
+        local done_count=$(grep -c "\\[x\\] #todo" "$note_file" 2>/dev/null || echo "0")
+        local last_modified=$(stat -c %y "$note_file" 2>/dev/null | cut -d' ' -f1)
+        echo "$dir|$dir_name - $todo_count open, $done_count done (last: $last_modified)"
+    done | sort -t'|' -k2 > "$dirs_list"
+
+    if [ ! -s "$dirs_list" ]; then
+        log_info "No directories with notes found"
+        rm -f "$dirs_list"
+        return 1
+    fi
+
+    # Use FZF to select directory
+    local selected
+    selected=$(cat "$dirs_list" | fzf \
+        --prompt="Switch to directory: " \
+        --height=40% \
+        --reverse \
+        --border \
+        --delimiter="|" \
+        --with-nth=2 \
+        --preview 'dir=$(echo {} | cut -d"|" -f1); if [ -f "$dir/notes.md" ]; then cat "$dir/notes.md"; else echo "No notes found"; fi' \
+        --preview-window=right:60%)
+
+    if [ -n "$selected" ]; then
+        local target_dir=$(echo "$selected" | cut -d"|" -f1)
+        local target_name=$(basename "$target_dir")
+        log_info "Switching to directory: $target_name"
+        echo "cd \"$(dirname "$target_dir")/$target_name\""
+        # Note: User will need to eval this output or we could create a function
+    else
+        log_info "No directory selected"
+    fi
+
+    rm -f "$dirs_list"
+}
+
 # Placeholder functions for missing functionality
 answer_question() {
     log_error "Answer question functionality not implemented"
@@ -239,7 +376,10 @@ Journal Script - Note taking and todo management
 Usage: $0 [OPTION] [ARGUMENTS...]
 
 Options:
-  -s, -search TERM     Search for TERM in journal
+  -s, -search [TERM]   Search for TERM (interactive FZF if no term provided)
+  -sf                  Interactive FZF search with live preview
+  -browse, -b          Browse all notes with FZF and preview
+  -cd, -switch         Switch to a different directory using FZF
   -tq, -q, -question   Add a question
   -ql                  List questions
   -qa                  Answer a question (not implemented)
@@ -263,6 +403,9 @@ Examples:
   $0 -todo "Fix the bug in authentication"
   $0 -tm abc123
   $0 -search "authentication"
+  $0 -search               # Interactive FZF search
+  $0 -browse               # Browse all notes with preview
+  $0 -cd                   # Switch directory interactively
 EOF
 }
 
@@ -278,8 +421,25 @@ main() {
 
     case "$opt" in
         -s|-search)
-            [ $# -eq 0 ] && { log_error "Search term required"; return 1; }
-            search_notes "$1"
+            if [ $# -eq 0 ]; then
+                # No search term provided, use FZF for interactive search
+                fzf_search_notes
+            else
+                # Search term provided, use traditional search
+                search_notes "$1"
+            fi
+            ;;
+        -sf)
+            # Force FZF search mode
+            fzf_search_notes
+            ;;
+        -browse|-b)
+            # Browse all notes with FZF
+            fzf_browse_notes
+            ;;
+        -cd|-switch)
+            # Switch directories with FZF
+            fzf_switch_directory
             ;;
         -tq|-q|-question)
             [ $# -eq 0 ] && { log_error "Question text required"; return 1; }
