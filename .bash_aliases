@@ -7,6 +7,9 @@ function update_dots () {
 
 /home/kcaldwell/Documents/dotfiles/setup_tmux_workspaces.sh
 
+# Journal.sh completion
+source "/home/kcaldwell/Documents/dotfiles/journal-completion.zsh"
+
 setup_machine() {
   git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
 }
