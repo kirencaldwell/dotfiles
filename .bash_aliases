@@ -5,15 +5,104 @@ function update_dots () {
   source ~/.bashrc
 }
 
-if [ "$color_prompt" = yes ]; then
-  PS1='${debian_chroot:($debian_chroot)}\[\e[93m\]\W\[\e[m\]:/\[\e[34m\]>\[\e[m\]\[\e[37m\]\\$\[\e[m\] '
-else
-  PS1='${debian_chroot:($debian_chroot)}\u@\h:\w\$ '
-fi
-unset color_prompt force_color_prompt
+/home/kcaldwell/Documents/dotfiles/setup_tmux_workspaces.sh
+
+setup_machine() {
+  git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+}
+
+cp ~/.tmux.conf ~/.tmux.conf.bak
+cp ~/Documents/dotfiles/.tmux.conf ~/.tmux.conf
+set -o vi
+
+alias summarize_commits='/home/kcaldwell/Documents/dotfiles/summarize_commits.py'
+# Function to ensure commit summary cron job is installed
+setup_commit_summary_cron() {
+    # Check if the cron job already exists
+    if ! crontab -l 2>/dev/null | grep -q "summarize_commits"; then
+        # If it doesn't exist, add it
+        (crontab -l 2>/dev/null; echo "55 23 * * * 'summarize_commits'") | crontab -
+        echo "Commit summary cron job installed"
+    else
+      echo "Summarize commit cron job already exists"
+    fi
+}
+# Run the setup function when .bash_aliases is sourced
+setup_commit_summary_cron  
+
+alias clean_chum_cache='find /home/kcaldwell/.cache/chum -type d -mtime +60 -exec rm -rf {} +'
+alias find_all_argus='/home/kcaldwell/Documents/dotfiles/find_link_tmux.sh'
+alias find_last_argus='/home/kcaldwell/Documents/dotfiles/find_link_tmux.sh | tail -1'
+alias argus_obs='/home/kcaldwell/Documents/dotfiles/format_pr_obs.py -l $(find_last_argus) -o $@'
+alias gcm='zi-gcm --dry-run | xclip -selection clipboard'
+alias copy='xclip -selection clipboard'
+
+alias grc='git rebase --continue'
+alias gca='git commit --amend'
+alias gsp0='git stash pop stash@{0}'
+alias gh='./devx/bin/gh'
+
+git_workflow() {
+  echo "Setup stack: git checkout --track origin/master -b kcaldwell/project_name"
+  echo "Make changes"
+  echo "Make commit message and copy to clibpard: gcm"
+  echo "Commit changes: git commit"
+  echo "Paste commit message"
+  echo "Test things"
+  echo "Log observations from Argus and copy to clipboard: argus_obs obs1 obs2 | copy"
+  echo "Add observations to PR: gca"
+  echo "Paste observations"
+}
+split_commit() {
+  echo "Splitting commit 'git reset HEAD^'"
+  git reset HEAD^
+  echo "Now add files and make commits to split into multiple commits"
+}
+
+# Show git branch name
+parse_git_branch() {
+    git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/'
+}
+# Update terminal title with git branch
+PROMPT_COMMAND='echo -ne "\033]0;${PWD##*/}$(parse_git_branch)\007"' 
+
+alias cs='git grep -ni $*'
+alias md2html='function _md2html() {
+    if [ -z "$1" ] || [ -z "$2" ]; then
+        echo "Usage: md2html input.md output.html"
+        return 1
+    fi
+    if [ ! -f "$1" ]; then
+        echo "Error: Input file $1 not found"
+        return 1
+    fi
+    pandoc "$1" -o "$2" -s --css style.css
+    # Get absolute path and create file URL
+    abs_path=$(realpath "$2")
+    echo "Conversion complete. Click here to open: file://$abs_path"
+}; _md2html' 
+
+alias nodejs=node
 
 # Journaling alias
 alias note='sh ~/Documents/dotfiles/journal.sh $*'
+
+# Results alias
+alias results='sh ~/Documents/dotfiles/save_results.sh $*'
+
+# debug
+alias debug='$(pwd)/devx/scripts/debug.py'
+
+# refresh zooxrc
+function refresh_zooxrc () {
+
+  eval '(ssh-agent)'
+  eval '(ssh-add -k ~/.ssh/id_ed25519)'
+  if test -f scripts/shell/zooxrc.sh; then
+    echo "Refreshing zooxrc"
+    source scripts/shell/zooxrc.sh
+  fi
+}
 
 # 
 alias vimf='vim $(fzf)'
@@ -59,14 +148,14 @@ gt() {
     --preview 'git show --color=always {} | head -'$LINES
 }
 
-gh() {
-  is_in_git_repo || return
-  git log --date=short --format="%C(green)%C(bold)%cd %C(auto)%h%d %s (%an)" --graph --color=always |
-  fzf-down --ansi --no-sort --reverse --multi --bind 'ctrl-s:toggle-sort' \
-    --header 'Press CTRL-S to toggle sort' \
-    --preview 'grep -o "[a-f0-9]\{7,\}" <<< {} | xargs git show --color=always | head -'$LINES |
-  grep -o "[a-f0-9]\{7,\}"
-}
+#gh() {
+#  is_in_git_repo || return
+#  git log --date=short --format="%C(green)%C(bold)%cd %C(auto)%h%d %s (%an)" --graph --color=always |
+#  fzf-down --ansi --no-sort --reverse --multi --bind 'ctrl-s:toggle-sort' \
+#    --header 'Press CTRL-S to toggle sort' \
+#    --preview 'grep -o "[a-f0-9]\{7,\}" <<< {} | xargs git show --color=always | head -'$LINES |
+#  grep -o "[a-f0-9]\{7,\}"
+#}
 
 gr() {
   is_in_git_repo || return
@@ -143,7 +232,7 @@ _viewGitLogLine="$_gitLogLineToHash | xargs -I % sh -c 'git show --color=always 
 
 # fcoc_preview - checkout git commit with previews
 fcoc_preview() {
-  local commit
+  local commt
   commit=$( glNoGraph |
     fzf --no-sort --reverse --tiebreak=index --no-multi \
         --ansi --preview="$_viewGitLogLine" ) &&
@@ -267,25 +356,67 @@ fif() {
 alias tls='tmux list-sessions'
 alias tks='tmux kill-session -t'
 alias ta='tmux attach -t'
-alias tn='tmux new -s'
+alias tn='TERM=xterm-256color tmux new -s'
 
-# code search
-function cs () {
-  if [ "$#" -eq  "0" ]
-    then
-      echo "No arguments supplied"
-  else
-      grep -n -r -i ${@:2} "$1"
-  fi
+function remove_project() {
+  PWD_NAME=$(pwd)
+  PROJ_NAME=$1
+  cd ~/driving
+  git worktree remove ../$PROJ_NAME
+  git branch -D $PROJ_NAME
+  git branch -D kcaldwell/$PROJ_NAME
+  if [ $(tmux display-message -p '#S') = $PROJ_NAME ]; then
+    tmux switch -t home
+  fi 
+  tmux kill-session -t $PROJ_NAME
 }
 
-# find files
-function ff () {
-  if [ "$#" -eq "0" ]
-  then
-    echo "no arguments supplied"
+function new_project () {
+  PWD_NAME=$(pwd)
+  PROJ_NAME=$1
+  cd ~/driving
+  git worktree add ../$PROJ_NAME
+  cd ../$PROJ_NAME
+  if [ -n "$2" ]; then
+    BASE=$2
+    git checkout --track $BASE -b $PROJ_NAME
   else
-    find -iname \*$1\*
+    git checkout --track origin/master -b $PROJ_NAME
   fi
+  TMUX= tmux new-session -d -s $PROJ_NAME
+  tmux switch-client -t $PROJ_NAME
+  cd $PWD_NAME
 }
+
+function doxy () {
+  CMD="./doc/doxygen/generate_doxygen.sh local_docs" 
+  $CMD $1
+  s=$1
+  d=${s%%:*}
+  my_ip=$(ip route get 8.8.8.8 | awk -F"src " 'NR==1{split($2,a," ");print a[1]}')
+  echo $my_ip":8000/"$d
+  (cd local_docs; python3 -m http.server 8000)
+}
+
+function fzfc() {
+  cat ~/saved_commands.txt | fzf
+}
+
+function save_last_command() {
+  BRANCH=$(git rev-parse --abbrev-ref HEAD 2> /dev/null);
+  COMMAND=$(fc -ln -1);
+  echo "\`$BRANCH\` $COMMAND"
+  echo -e "\x60\x23 $BRANCH\x60 $COMMAND" >> ~/saved_commands.txt
+}
+
+function run_local_curvature_response() {
+  ./sim/launch.sh local planner vis/controls_analysis/sim_tests:curvature_response --simulator_args="--params-kv sim/enable_cas=false --params-kv sim/terminate_on=none" --save_chum_nfs
+}
+
+function run_marvel_curvature_response() {
+  ./sim/launch.sh marvel planner vis/controls_analysis/sim_tests:curvature_response --simulator_args="--params-kv sim/enable_cas=false --params-kv sim/terminate_on=none"
+}
+
+source /usr/share/doc/fzf/examples/key-bindings.bash
+
 

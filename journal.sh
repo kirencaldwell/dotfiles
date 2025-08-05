@@ -5,6 +5,10 @@ NOW=$(date)
 TODAY=$(date +%F)
 DIR_NAME=$(basename "`pwd`")
 
+view_note() {
+  cat ${DAILY_PATH}/${DIR_NAME}/notes.md 
+}
+
 take_note () {
   # get current date
   # note is whatever user input
@@ -21,13 +25,14 @@ take_note () {
   # if we're in a git repo, then add that info
   if [ $STATUS -eq 0 ]
   then
-    NOTE="${NOTE} - git: ${GIT}/${BRANCH}, sha: ${SHA}"
+    STASH=$(git stash create)
+    NOTE="${NOTE} - git: ${GIT}/${BRANCH}, sha: ${SHA}, stash: ${STASH}"
   fi
  
   # add time info to note 
   # log note to file
   mkdir -p ${DAILY_PATH}/${DIR_NAME}
-  echo "$NOTE\n" >> ${DAILY_PATH}/${DIR_NAME}/notes.md
+  echo "\n$NOTE" >> ${DAILY_PATH}/${DIR_NAME}/notes.md
   # repeat the note so the user knows what it wrote
   echo "${NOTE_COLOR}$NOTE${NC}"
 }
@@ -38,7 +43,8 @@ add_todo() {
 }
 list_todos() {
   echo "${NOTE_COLOR}Listing todos${NC}"
-  grep -r -F "[ ] #todo" ${DAILY_PATH}/ --color
+  grep -r --exclude-dir=".*" -F "[ ] #todo" ${DAILY_PATH}/${DIR_NAME}/ --color | sort -t: -k2,2nr
+
 }
 delete_todo() {
   echo "${NOTE_COLOR}Marking todo ${RED}@${1} ${NOTE_COLOR}as done${NC}"
@@ -46,7 +52,7 @@ delete_todo() {
 }
 list_done() {
   echo "${NOTE_COLOR}Listing finished items${NC}"
-  grep -rF "[x] #todo" ${DAILY_PATH} --color
+  grep -rF --exclude-dir=".*" "[x] #todo" ${DAILY_PATH} --color | sort -t: -k2,2nr
 }
 reopen_todo() {
   echo "${NOTE_COLOR}Reopening todo ${RED}#${1}${NC}"
@@ -59,7 +65,7 @@ add_question() {
 }
 list_questions() {
   echo "${NOTE_COLOR}Listing questions${NC}"
-  grep -r "#question" ${DAILY_PATH} --color
+  grep -r --exclude-dir=".*" "#question" ${DAILY_PATH} --color
 }
 list_code() {
   echo "${NOTE_COLOR}Listing code snippets${NC}"
@@ -113,6 +119,9 @@ case ${OPT} in
     ;;
   -cl | -code_list)
     list_code
+    ;;
+  -v | -view)
+    view_note
     ;;
   # default case is to take note
   *)
