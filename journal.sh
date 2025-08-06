@@ -86,7 +86,7 @@ add_todo() {
 
 list_todos() {
     log_info "Listing todos"
-    if ! grep -r --exclude-dir=".*" -F "[ ] #todo" "${DAILY_PATH}/${DIR_NAME}/" --color 2>/dev/null | sort -t: -k2,2nr; then
+    if ! grep -r --exclude-dir=".*" -h -F "[ ] #todo" "${DAILY_PATH}/${DIR_NAME}/" 2>/dev/null | sort; then
         log_info "No open todos found"
     fi
 }
@@ -133,7 +133,7 @@ fzf_complete_todo() {
 
 list_done() {
     log_info "Listing finished items"
-    if ! grep -rF --exclude-dir=".*" "[x] #todo" "$DAILY_PATH" --color 2>/dev/null | sort -t: -k2,2nr; then
+    if ! grep -rF --exclude-dir=".*" -h "[x] #todo" "${DAILY_PATH}/${DIR_NAME}/" 2>/dev/null | sort; then
         log_info "No completed todos found"
     fi
 }
