@@ -332,6 +332,10 @@ alias fzfc="$DOTFILES_DIR/scripts/fzfc.sh"
 alias save_last_command="$DOTFILES_DIR/scripts/save_last_command.sh"
 alias run_local_curvature_response="$DOTFILES_DIR/scripts/run_local_curvature_response.sh"
 alias run_marvel_curvature_response="$DOTFILES_DIR/scripts/run_marvel_curvature_response.sh"
+alias sync_dotfiles="$DOTFILES_DIR/scripts/sync_dotfiles.sh"
+alias setup_dotfiles_automation="$DOTFILES_DIR/scripts/setup_dotfiles_automation.sh"
+alias parse_zi="$DOTFILES_DIR/scripts/parse_zi_output.sh"
+alias zi_daily_summary='zi "summarize things that happened today $(date) in $(sh $DOTFILES_DIR/journal.sh -v)" | parse_zi --quiet'
 
 source /usr/share/doc/fzf/examples/key-bindings.bash
 
