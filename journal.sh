@@ -47,6 +47,18 @@ get_git_info() {
 }
 
 # Core note-taking functions
+open_note() {
+    if [ -n "$EDITOR" ]; then
+        $EDITOR $NOTES_FILE
+    elif command -v vim >/dev/null 2>&1; then
+        vim $NOTES_FILE
+    elif command -v nano >/dev/null 2>&1; then
+        nano $NOTES_FILE
+    else
+        view_note
+    fi
+}
+
 view_note() {
     if [ -f "$NOTES_FILE" ]; then
         cat "$NOTES_FILE"
@@ -499,6 +511,9 @@ main() {
             ;;
         -v|-view)
             view_note
+            ;;
+        -o|-open)
+            open_note
             ;;
         -h|--help)
             show_help
