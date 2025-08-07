@@ -1,42 +1,30 @@
-# update dotfiles from repo
-function update_dots () {
-  git -C ~/src pull
-  bash ~/src/install_dotfiles.sh
-  source ~/.bashrc
-}
+# Get the directory where this .bash_aliases file is located
+DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-/home/kcaldwell/Documents/dotfiles/setup_tmux_workspaces.sh
+# update dotfiles from repo
+alias update_dots="$DOTFILES_DIR/scripts/update_dots.sh"
+
+$DOTFILES_DIR/setup_tmux_workspaces.sh
 
 # Journal.sh completion
-source "/home/kcaldwell/Documents/dotfiles/journal-completion.zsh"
+source "$DOTFILES_DIR/journal-completion.zsh"
 
-setup_machine() {
-  git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
-}
+alias setup_machine="$DOTFILES_DIR/scripts/setup_machine.sh"
 
 cp ~/.tmux.conf ~/.tmux.conf.bak
-cp ~/Documents/dotfiles/.tmux.conf ~/.tmux.conf
+cp $DOTFILES_DIR/.tmux.conf ~/.tmux.conf
 set -o vi
 
-alias summarize_commits='/home/kcaldwell/Documents/dotfiles/summarize_commits.py'
+alias summarize_commits="$DOTFILES_DIR/summarize_commits.py"
 # Function to ensure commit summary cron job is installed
-setup_commit_summary_cron() {
-    # Check if the cron job already exists
-    if ! crontab -l 2>/dev/null | grep -q "summarize_commits"; then
-        # If it doesn't exist, add it
-        (crontab -l 2>/dev/null; echo "55 23 * * * 'summarize_commits'") | crontab -
-        echo "Commit summary cron job installed"
-    else
-      echo "Summarize commit cron job already exists"
-    fi
-}
+alias setup_commit_summary_cron="$DOTFILES_DIR/scripts/setup_commit_summary_cron.sh"
 # Run the setup function when .bash_aliases is sourced
-setup_commit_summary_cron  
+setup_commit_summary_cron
 
 alias clean_chum_cache='find /home/kcaldwell/.cache/chum -type d -mtime +60 -exec rm -rf {} +'
-alias find_all_argus='/home/kcaldwell/Documents/dotfiles/find_link_tmux.sh'
-alias find_last_argus='/home/kcaldwell/Documents/dotfiles/find_link_tmux.sh | tail -1'
-alias argus_obs='/home/kcaldwell/Documents/dotfiles/format_pr_obs.py -l $(find_last_argus) -o $@'
+alias find_all_argus="$DOTFILES_DIR/find_link_tmux.sh"
+alias find_last_argus="$DOTFILES_DIR/find_link_tmux.sh | tail -1"
+alias argus_obs="$DOTFILES_DIR/format_pr_obs.py -l \$(find_last_argus) -o \$@"
 alias gcm='zi-gcm --dry-run | xclip -selection clipboard'
 alias copy='xclip -selection clipboard'
 
@@ -45,29 +33,13 @@ alias gca='git commit --amend'
 alias gsp0='git stash pop stash@{0}'
 alias gh='./devx/bin/gh'
 
-git_workflow() {
-  echo "Setup stack: git checkout --track origin/master -b kcaldwell/project_name"
-  echo "Make changes"
-  echo "Make commit message and copy to clibpard: gcm"
-  echo "Commit changes: git commit"
-  echo "Paste commit message"
-  echo "Test things"
-  echo "Log observations from Argus and copy to clipboard: argus_obs obs1 obs2 | copy"
-  echo "Add observations to PR: gca"
-  echo "Paste observations"
-}
-split_commit() {
-  echo "Splitting commit 'git reset HEAD^'"
-  git reset HEAD^
-  echo "Now add files and make commits to split into multiple commits"
-}
+alias git_workflow="$DOTFILES_DIR/scripts/git_workflow.sh"
+alias split_commit="$DOTFILES_DIR/scripts/split_commit.sh"
 
 # Show git branch name
-parse_git_branch() {
-    git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/'
-}
+alias parse_git_branch="$DOTFILES_DIR/scripts/parse_git_branch.sh"
 # Update terminal title with git branch
-PROMPT_COMMAND='echo -ne "\033]0;${PWD##*/}$(parse_git_branch)\007"' 
+PROMPT_COMMAND='echo -ne "\033]0;${PWD##*/}$(parse_git_branch)\007"'
 
 alias cs='git grep -ni $*'
 alias md2html='function _md2html() {
@@ -83,31 +55,23 @@ alias md2html='function _md2html() {
     # Get absolute path and create file URL
     abs_path=$(realpath "$2")
     echo "Conversion complete. Click here to open: file://$abs_path"
-}; _md2html' 
+}; _md2html'
 
 alias nodejs=node
 
 # Journaling alias
-alias note='sh ~/Documents/dotfiles/journal.sh $*'
+alias note="sh $DOTFILES_DIR/journal.sh \$*"
 
 # Results alias
-alias results='sh ~/Documents/dotfiles/save_results.sh $*'
+alias results="sh $DOTFILES_DIR/save_results.sh \$*"
 
 # debug
 alias debug='$(pwd)/devx/scripts/debug.py'
 
 # refresh zooxrc
-function refresh_zooxrc () {
+alias refresh_zooxrc="$DOTFILES_DIR/scripts/refresh_zooxrc.sh"
 
-  eval '(ssh-agent)'
-  eval '(ssh-add -k ~/.ssh/id_ed25519)'
-  if test -f scripts/shell/zooxrc.sh; then
-    echo "Refreshing zooxrc"
-    source scripts/shell/zooxrc.sh
-  fi
-}
-
-# 
+#
 alias vimf='vim $(fzf)'
 
 # ssh shortcuts
@@ -361,65 +325,13 @@ alias tks='tmux kill-session -t'
 alias ta='tmux attach -t'
 alias tn='TERM=xterm-256color tmux new -s'
 
-function remove_project() {
-  PWD_NAME=$(pwd)
-  PROJ_NAME=$1
-  cd ~/driving
-  git worktree remove ../$PROJ_NAME
-  git branch -D $PROJ_NAME
-  git branch -D kcaldwell/$PROJ_NAME
-  if [ $(tmux display-message -p '#S') = $PROJ_NAME ]; then
-    tmux switch -t home
-  fi 
-  tmux kill-session -t $PROJ_NAME
-}
-
-function new_project () {
-  PWD_NAME=$(pwd)
-  PROJ_NAME=$1
-  cd ~/driving
-  git worktree add ../$PROJ_NAME
-  cd ../$PROJ_NAME
-  if [ -n "$2" ]; then
-    BASE=$2
-    git checkout --track $BASE -b kcaldwell/$PROJ_NAME
-  else
-    git checkout --track origin/master -b kcaldwell/$PROJ_NAME
-  fi
-  TMUX= tmux new-session -d -s $PROJ_NAME
-  tmux switch-client -t $PROJ_NAME
-  cd $PWD_NAME
-}
-
-function doxy () {
-  CMD="./doc/doxygen/generate_doxygen.sh local_docs" 
-  $CMD $1
-  s=$1
-  d=${s%%:*}
-  my_ip=$(ip route get 8.8.8.8 | awk -F"src " 'NR==1{split($2,a," ");print a[1]}')
-  echo $my_ip":8000/"$d
-  (cd local_docs; python3 -m http.server 8000)
-}
-
-function fzfc() {
-  cat ~/saved_commands.txt | fzf
-}
-
-function save_last_command() {
-  BRANCH=$(git rev-parse --abbrev-ref HEAD 2> /dev/null);
-  COMMAND=$(fc -ln -1);
-  echo "\`$BRANCH\` $COMMAND"
-  echo -e "\x60\x23 $BRANCH\x60 $COMMAND" >> ~/saved_commands.txt
-}
-
-function run_local_curvature_response() {
-  ./sim/launch.sh local planner vis/controls_analysis/sim_tests:curvature_response --simulator_args="--params-kv sim/enable_cas=false --params-kv sim/terminate_on=none" --save_chum_nfs
-}
-
-function run_marvel_curvature_response() {
-  ./sim/launch.sh marvel planner vis/controls_analysis/sim_tests:curvature_response --simulator_args="--params-kv sim/enable_cas=false --params-kv sim/terminate_on=none"
-}
+alias remove_project="$DOTFILES_DIR/scripts/remove_project.sh"
+alias new_project="$DOTFILES_DIR/scripts/new_project.sh"
+alias doxy="$DOTFILES_DIR/scripts/doxy.sh"
+alias fzfc="$DOTFILES_DIR/scripts/fzfc.sh"
+alias save_last_command="$DOTFILES_DIR/scripts/save_last_command.sh"
+alias run_local_curvature_response="$DOTFILES_DIR/scripts/run_local_curvature_response.sh"
+alias run_marvel_curvature_response="$DOTFILES_DIR/scripts/run_marvel_curvature_response.sh"
 
 source /usr/share/doc/fzf/examples/key-bindings.bash
-
 
