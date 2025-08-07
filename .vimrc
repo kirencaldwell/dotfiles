@@ -383,5 +383,5 @@ let mapleader = " "        " Set leader to spacebar (recommended)
 " let mapleader = "\"     " Alternative: set leader to backslash (default)
 
 " Journal integration plugin
-source /home/kcaldwell/Documents/dotfiles/vim-journal.vim
+source /home/kcaldwell/Documents/dotfiles/journal/vim-journal.vim
 

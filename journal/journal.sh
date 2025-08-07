@@ -213,8 +213,8 @@ list_code() {
     log_info "Listing code snippets"
     # Note: Original script references ~/.my_journal.txt which seems inconsistent
     # Keeping the original behavior but this might need adjustment
-    if [ -f ~/.my_journal.txt ]; then
-        grep "#code" ~/.my_journal.txt --color || log_info "No code snippets found"
+    if [ -f $NOTES_FILE ]; then
+        grep "#code" $NOTES_FILE --color || log_info "No code snippets found"
     else
         log_info "Code journal file not found"
     fi

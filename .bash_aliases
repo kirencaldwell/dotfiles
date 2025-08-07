@@ -60,7 +60,7 @@ alias md2html='function _md2html() {
 alias nodejs=node
 
 # Journaling alias
-alias note="sh $DOTFILES_DIR/journal.sh \$*"
+alias note="sh $DOTFILES_DIR/journal/journal.sh \$*"
 
 # Results alias
 alias results="sh $DOTFILES_DIR/save_results.sh \$*"

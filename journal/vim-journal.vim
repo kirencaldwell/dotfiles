@@ -133,7 +133,7 @@ function! AddCodeSnippetFromSelection() range
     let l:code_snippet = join(l:selected_lines, "\n")
 
     " Create a formatted code snippet note
-    let l:snippet_text = "Code from " . l:filename . ":" . l:start_line . "-" . l:end_line . "\n```\n" . l:code_snippet . "\n```"
+    let l:snippet_text = "Code from " . l:filename . ":" . l:start_line . "-" . l:end_line . "\n```\n" . l:code_snippet . "\n```\n"
 
     " Add to journal
     call system('cd ' . shellescape(getcwd()) . ' && ' . g:journal_script_path . ' -code ' . shellescape(l:snippet_text))
